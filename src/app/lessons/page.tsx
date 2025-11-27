@@ -9,9 +9,11 @@ import LoginModal from '@/components/custom/LoginModal';
 
 export default function LessonsPage() {
   const router = useRouter();
-  const { appState, hasContentAccess, isGuest } = useApp();
+  const { appState, hasContentAccess, isGuest, completeLesson } = useApp();
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [exerciseChecklist, setExerciseChecklist] = useState<boolean[]>([]);
+  const [exerciseText, setExerciseText] = useState('');
 
   const currentLesson = appState.user?.currentLesson || 1;
   const completedLessons = appState.user?.completedLessons || [];
@@ -35,6 +37,39 @@ export default function LessonsPage() {
     }
 
     setSelectedLesson(lessonId);
+    setExerciseChecklist([]);
+    setExerciseText('');
+  };
+
+  const handleCompleteLesson = () => {
+    if (!selectedLessonContent) return;
+
+    // Validar checklist
+    const allChecked = exerciseChecklist.length === selectedLessonContent.exercise.checklist.length &&
+                       exerciseChecklist.every(checked => checked);
+    
+    // Validar texto
+    const hasText = exerciseText.trim().length > 0;
+
+    if (!allChecked || !hasText) {
+      alert('Por favor, complete todos os itens do checklist e escreva sua resposta antes de concluir.');
+      return;
+    }
+
+    // Completar lição
+    const checklistItems = selectedLessonContent.exercise.checklist;
+    completeLesson(selectedLessonContent.id, exerciseText, checklistItems);
+
+    // Voltar para lista
+    setSelectedLesson(null);
+    setExerciseChecklist([]);
+    setExerciseText('');
+  };
+
+  const handleChecklistChange = (index: number, checked: boolean) => {
+    const newChecklist = [...exerciseChecklist];
+    newChecklist[index] = checked;
+    setExerciseChecklist(newChecklist);
   };
 
   const selectedLessonContent = selectedLesson 
@@ -96,6 +131,8 @@ export default function LessonsPage() {
                   <label key={index} className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"
+                      checked={exerciseChecklist[index] || false}
+                      onChange={(e) => handleChecklistChange(index, e.target.checked)}
                       className="mt-1 w-5 h-5 rounded border-white/20 bg-white/10"
                     />
                     <span className="text-white/80">{item}</span>
@@ -109,12 +146,17 @@ export default function LessonsPage() {
                   {selectedLessonContent.exercise.textPrompt}
                 </label>
                 <textarea
+                  value={exerciseText}
+                  onChange={(e) => setExerciseText(e.target.value)}
                   className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-green-500 min-h-[120px]"
                   placeholder="Escreva sua resposta aqui..."
                 />
               </div>
 
-              <button className="w-full bg-green-500 text-white py-4 rounded-xl font-bold hover:bg-green-600 transition-colors mt-6">
+              <button 
+                onClick={handleCompleteLesson}
+                className="w-full bg-green-500 text-white py-4 rounded-xl font-bold hover:bg-green-600 transition-colors mt-6"
+              >
                 Concluir e Liberar Próxima Aula
               </button>
             </div>
